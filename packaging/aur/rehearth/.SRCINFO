@@ -1,0 +1,20 @@
+pkgbase = rehearth
+	pkgdesc = Launcher and mod manager for Stonehearth on Linux
+	pkgver = 0.2.1
+	pkgrel = 1
+	url = https://github.com/Aphrodine-wq/rehearth
+	arch = x86_64
+	license = MIT
+	license = OFL-1.1
+	makedepends = cargo
+	depends = gcc-libs
+	depends = glibc
+	depends = libxkbcommon
+	depends = vulkan-icd-loader
+	depends = xdg-utils
+	optdepends = steam: starting the game and installing Workshop mods (Flatpak Steam works too)
+	options = !lto
+	source = rehearth-0.2.1.tar.gz::https://github.com/Aphrodine-wq/rehearth/archive/v0.2.1.tar.gz
+	sha256sums = ecda2bca0e9661c042614057d6dc1aab622dedf99af35dc1c31ddf97c900d914
+
+pkgname = rehearth

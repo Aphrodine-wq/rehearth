@@ -1,0 +1,43 @@
+# Maintainer: James Walton <jamesburge.mcm at gmail dot com>
+pkgname=rehearth
+pkgver=0.2.1
+pkgrel=1
+pkgdesc="Launcher and mod manager for Stonehearth on Linux"
+arch=('x86_64')
+url="https://github.com/Aphrodine-wq/rehearth"
+license=('MIT' 'OFL-1.1')
+depends=('gcc-libs' 'glibc' 'libxkbcommon' 'vulkan-icd-loader' 'xdg-utils')
+makedepends=('cargo')
+optdepends=('steam: starting the game and installing Workshop mods (Flatpak Steam works too)')
+options=('!lto')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('ecda2bca0e9661c042614057d6dc1aab622dedf99af35dc1c31ddf97c900d914')
+
+prepare() {
+  cd "$pkgname-$pkgver/launcher"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc --print host-tuple)"
+}
+
+build() {
+  cd "$pkgname-$pkgver/launcher"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release
+}
+
+check() {
+  cd "$pkgname-$pkgver/launcher"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo test --frozen --release
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 launcher/target/release/rehearth "$pkgdir/usr/bin/rehearth"
+  install -Dm644 packaging/rehearth.desktop "$pkgdir/usr/share/applications/rehearth.desktop"
+  install -Dm644 packaging/rehearth.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/rehearth.png"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 launcher/assets/fonts/OFL.txt "$pkgdir/usr/share/licenses/$pkgname/OFL.txt"
+  install -Dm644 mods/rehearth_patch/LICENSE.ace.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE-ace.md"
+}

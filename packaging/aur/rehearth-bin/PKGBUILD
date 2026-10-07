@@ -1,0 +1,25 @@
+# Maintainer: James Walton <jamesburge.mcm at gmail dot com>
+pkgname=rehearth-bin
+pkgver=0.2.1
+pkgrel=1
+pkgdesc="Launcher and mod manager for Stonehearth on Linux (prebuilt)"
+arch=('x86_64')
+url="https://github.com/Aphrodine-wq/rehearth"
+license=('MIT' 'OFL-1.1')
+depends=('gcc-libs' 'glibc' 'libxkbcommon' 'vulkan-icd-loader' 'xdg-utils')
+optdepends=('steam: starting the game and installing Workshop mods (Flatpak Steam works too)')
+provides=('rehearth')
+conflicts=('rehearth')
+options=('!strip' '!debug')
+source=("rehearth-$pkgver.tar.gz::$url/releases/download/v$pkgver/rehearth-linux-x86_64.tar.gz")
+sha256sums=('9efd8c4e31bccd5398383089ed98f9fe546b7cb8436efb4a300252ffae4c43bd')
+
+package() {
+  cd "rehearth-$pkgver-linux-x86_64"
+  install -Dm755 rehearth "$pkgdir/usr/bin/rehearth"
+  install -Dm644 rehearth.desktop "$pkgdir/usr/share/applications/rehearth.desktop"
+  install -Dm644 rehearth.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/rehearth.png"
+  install -Dm644 licenses/LICENSE-rehearth.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 licenses/OFL-google-sans.txt "$pkgdir/usr/share/licenses/$pkgname/OFL.txt"
+  install -Dm644 licenses/LICENSE-ace.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE-ace.md"
+}
