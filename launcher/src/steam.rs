@@ -117,6 +117,23 @@ impl Api {
         ok.then(|| unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy().to_string())
     }
 
+    /// Waits for the item's subscribed bit to read `want`. Steam can answer a
+    /// subscribe call before the item's state catches up (or report a failure
+    /// for an item it did subscribe), so the state is what counts.
+    fn wait_subscribed(&self, id: u64, want: bool, timeout: Duration) -> bool {
+        let start = Instant::now();
+        loop {
+            self.pump();
+            if (self.state(id) & SUBSCRIBED != 0) == want {
+                return true;
+            }
+            if start.elapsed() > timeout {
+                return false;
+            }
+            thread::sleep(Duration::from_millis(250));
+        }
+    }
+
     /// Pumps callbacks until an async call finishes or the deadline passes.
     fn wait_call(&self, call: u64, timeout: Duration) -> bool {
         let start = Instant::now();
@@ -169,7 +186,8 @@ fn run_worker(args: &[String]) -> Result<()> {
         "subscribe" => {
             if api.state(id) & SUBSCRIBED == 0 {
                 let call = unsafe { (api.subscribe)(api.ugc, id) };
-                if !api.wait_call(call, Duration::from_secs(30)) || api.state(id) & SUBSCRIBED == 0 {
+                api.wait_call(call, Duration::from_secs(30));
+                if !api.wait_subscribed(id, true, Duration::from_secs(15)) {
                     bail!("Steam wouldn't subscribe to this item");
                 }
             }
@@ -197,7 +215,8 @@ fn run_worker(args: &[String]) -> Result<()> {
         }
         "unsubscribe" => {
             let call = unsafe { (api.unsubscribe)(api.ugc, id) };
-            if !api.wait_call(call, Duration::from_secs(30)) || api.state(id) & SUBSCRIBED != 0 {
+            api.wait_call(call, Duration::from_secs(30));
+            if !api.wait_subscribed(id, false, Duration::from_secs(15)) {
                 bail!("Steam wouldn't unsubscribe from this item");
             }
             println!("unsubscribed {id}");

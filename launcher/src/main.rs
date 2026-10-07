@@ -1,5 +1,6 @@
 //! ReHearth: a launcher and mod manager for Stonehearth on Linux.
 
+mod agent;
 mod art;
 mod bisect;
 mod doctor;
@@ -1136,6 +1137,13 @@ fn main() -> eframe::Result {
     if args.first().map(String::as_str) == Some("--version") {
         println!("rehearth {}", update::current());
         return Ok(());
+    }
+    // for coding agents: an MCP server, or one tool call as JSON
+    if matches!(args.first().map(String::as_str), Some("mcp" | "--mcp")) {
+        std::process::exit(agent::serve_mcp());
+    }
+    if matches!(args.first().map(String::as_str), Some("api" | "--api")) {
+        std::process::exit(agent::run_cli(&args[1..]));
     }
     if args.first().map(String::as_str) == Some("--update") {
         std::process::exit(update::run_cli());

@@ -19,6 +19,7 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="#what-it-does">What it does</a> ·
+  <a href="#for-coding-agents">For agents</a> ·
   <a href="#faq">FAQ</a> ·
   <a href="#building-from-source">Build</a>
 </p>
@@ -127,6 +128,21 @@ has one fix so far.
 Doctor shows whether the patch loaded in your last session, and how many duplicate searches the log
 recorded. More fixes will follow as they're found and measured; see the [roadmap](#roadmap).
 
+## For coding agents
+
+ReHearth works as a tool for Claude Code, Codex, Cursor and other coding agents. `rehearth mcp` is an
+[MCP](https://modelcontextprotocol.io) server, and `rehearth api <tool> '<json>'` gives the same tools as
+JSON on the command line. An agent can check mod health, fix load order, find and install missing
+dependencies, search the Workshop, and read what went wrong in the last session.
+
+```sh
+claude mcp add --scope user rehearth -- rehearth mcp
+```
+
+Then ask things like "why did Stonehearth throw errors last session?" or "install whatever my mods are
+missing". The tools refuse to change anything while the game runs, and agents are told to install or
+launch only when you ask. Setup for other clients and the full tool list: [docs/agents.md](docs/agents.md).
+
 ## How mod loading works
 
 From the official modding guide and the engine itself: base mods load first, and every other mod loads
@@ -184,6 +200,8 @@ No. ReHearth is built for Linux, where Stonehearth runs through Proton.
 | `--report` | print what ReHearth sees: game folder, version, mods in load order, problems |
 | `--fix` | apply the automatic mod fixes without opening a window |
 | `--find-needed` | look up the missing mods your mods need, and show what would be installed |
+| `mcp` | run as an MCP server for coding agents (see [docs/agents.md](docs/agents.md)) |
+| `api [tool] [json]` | run one agent tool and print JSON; no tool lists them |
 | `--update` | update ReHearth to the latest release |
 | `--browse [search]` | list Workshop mods as text |
 | `--tab <name>` | open on a screen: `home`, `mods`, `workshop`, `saves`, `doctor` or `settings` |
@@ -230,6 +248,7 @@ the tarball and the plain binary.
 | `launcher/src/workshop.rs`, `steam.rs` | Workshop browsing, and installs through the Steam client |
 | `launcher/src/needed.rs` | finding mods that other mods need on the Workshop |
 | `launcher/src/update.rs` | self-update and the app menu entry |
+| `launcher/src/agent.rs` | the agent tools: MCP server and JSON command line |
 | `mods/rehearth_patch/` | the patch mod (built into the launcher) |
 | `mods/rehearth_bench/`, `tools/bench.sh` | the big-town benchmark (unfinished) |
 | `packaging/` | icon, desktop entry |

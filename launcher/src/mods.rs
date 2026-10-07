@@ -104,8 +104,40 @@ impl ModInfo {
     }
 }
 
+/// Reads a manifest as leniently as the game does: Stonehearth accepts a
+/// trailing comma before `}` or `]` (popular mods like LostEms ship one), so a
+/// manifest only counts as broken when it fails without those too.
 fn parse_manifest(text: &str) -> Result<Value, String> {
-    serde_json::from_str(text.trim_start_matches('\u{feff}')).map_err(|e| format!("manifest.json is broken: {e}"))
+    let text = text.trim_start_matches('\u{feff}');
+    serde_json::from_str(text).or_else(|e| {
+        serde_json::from_str(&strip_trailing_commas(text)).map_err(|_| format!("manifest.json is broken: {e}"))
+    })
+}
+
+/// Drops commas that directly precede a closing `}` or `]`, leaving strings alone.
+fn strip_trailing_commas(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = String::with_capacity(text.len());
+    let (mut in_string, mut escaped) = (false, false);
+    for (i, &c) in chars.iter().enumerate() {
+        if in_string {
+            out.push(c);
+            match c {
+                _ if escaped => escaped = false,
+                '\\' => escaped = true,
+                '"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+        if c == '"' {
+            in_string = true;
+        } else if c == ',' && chars[i + 1..].iter().find(|c| !c.is_whitespace()).is_some_and(|n| *n == '}' || *n == ']') {
+            continue;
+        }
+        out.push(c);
+    }
+    out
 }
 
 /// manifest.json from inside an .smod (a zip holding `<namespace>/manifest.json`).
@@ -402,6 +434,14 @@ pub fn remove(m: &ModInfo) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn manifests_may_have_trailing_commas() {
+        let v = parse_manifest("{\"info\": {\"name\": \"a, }\", \"v\": [1, 2,],},\n}").unwrap();
+        assert_eq!(v["info"]["name"], "a, }");
+        assert_eq!(v["info"]["v"][1], 2);
+        assert!(parse_manifest("{\"info\": }").is_err());
+    }
 
     #[test]
     fn bundled_install_scan_and_remove() {
