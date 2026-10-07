@@ -845,13 +845,14 @@ impl App {
                     actions.push(Action::RestartUpdated);
                 }
             } else if let Some(v) = &self.new_version {
-                if update::Install::detect().can_replace() {
+                let install = update::Install::detect();
+                if install.can_replace() {
                     let busy = self.task.is_some();
                     if ui.add_enabled(!busy, egui::Button::new(RichText::new(format!("Update to ReHearth {v}")).color(AMBER))).clicked() {
                         actions.push(Action::SelfUpdate(v.clone()));
                     }
                 } else {
-                    ui.label(RichText::new(format!("ReHearth {v} is out (git pull to update)")).color(AMBER).small());
+                    ui.label(RichText::new(format!("ReHearth {v} is out ({})", install.manual_hint())).color(AMBER).small());
                 }
             }
             // status: download, background job, or the last message

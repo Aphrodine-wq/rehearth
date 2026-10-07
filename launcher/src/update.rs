@@ -23,6 +23,8 @@ pub enum Install {
     Binary(PathBuf),
     /// built with cargo: leave it alone
     Source,
+    /// installed by the system package manager (e.g. the AUR): it updates it
+    Package,
 }
 
 impl Install {
@@ -34,7 +36,9 @@ impl Install {
             return Install::Source;
         };
         let s = exe.to_string_lossy();
-        if s.contains("/.cargo/bin/") || s.contains("/target/") {
+        if s.starts_with("/usr/") || s.starts_with("/opt/") {
+            Install::Package
+        } else if s.contains("/.cargo/bin/") || s.contains("/target/") {
             Install::Source
         } else {
             Install::Binary(exe)
@@ -45,12 +49,20 @@ impl Install {
         match self {
             Install::AppImage(p) => Some((p, "ReHearth-x86_64.AppImage")),
             Install::Binary(p) => Some((p, "rehearth-linux-x86_64")),
-            Install::Source => None,
+            Install::Source | Install::Package => None,
         }
     }
 
     pub fn can_replace(&self) -> bool {
-        !matches!(self, Install::Source)
+        self.target().is_some()
+    }
+
+    /// How to update a copy that can't replace itself.
+    pub fn manual_hint(&self) -> &'static str {
+        match self {
+            Install::Package => "update it with your package manager",
+            _ => "git pull to update",
+        }
     }
 }
 
@@ -101,7 +113,10 @@ pub fn check() -> Result<Option<String>> {
 pub fn install(version: &str) -> Result<PathBuf> {
     let how = Install::detect();
     let Some((target, asset)) = how.target() else {
-        bail!("this copy was built from source; update it with `git pull` and `cargo install --path launcher`");
+        match how {
+            Install::Package => bail!("this copy came from your package manager; update it there"),
+            _ => bail!("this copy was built from source; update it with `git pull` and `cargo install --path launcher`"),
+        }
     };
     let url = format!("https://github.com/{REPO}/releases/download/v{version}/{asset}");
     let dir = target.parent().context("odd install path")?;
@@ -167,7 +182,7 @@ pub fn run_cli() -> i32 {
 pub fn add_to_app_menu() -> Result<PathBuf> {
     let exe = match Install::detect() {
         Install::AppImage(p) | Install::Binary(p) => p,
-        Install::Source => std::env::current_exe()?,
+        Install::Source | Install::Package => std::env::current_exe()?,
     };
     let data = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
@@ -182,11 +197,15 @@ pub fn add_to_app_menu() -> Result<PathBuf> {
     Ok(entry)
 }
 
+/// True when some menu entry for ReHearth exists, the user's own or a package's.
 pub fn in_app_menu() -> bool {
-    let data = std::env::var_os("XDG_DATA_HOME")
+    let home = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".local/share"));
-    data.join("applications/rehearth.desktop").is_file()
+    let system = std::env::var("XDG_DATA_DIRS").unwrap_or_else(|_| "/usr/local/share:/usr/share".into());
+    std::iter::once(home)
+        .chain(system.split(':').filter(|d| !d.is_empty()).map(PathBuf::from))
+        .any(|dir| dir.join("applications/rehearth.desktop").is_file())
 }
 
 pub const ICON_PNG: &[u8] = include_bytes!("../../packaging/rehearth.png");
