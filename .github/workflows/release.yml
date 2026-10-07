@@ -27,15 +27,25 @@ jobs:
         run: |
           dir=rehearth-${GITHUB_REF_NAME#v}-linux-x86_64
           mkdir -p "$dir/licenses"
-          cp launcher/target/release/rehearth install.sh packaging/rehearth.desktop README.md "$dir/"
+          cp launcher/target/release/rehearth install.sh packaging/rehearth.desktop packaging/rehearth.png README.md "$dir/"
           cp LICENSE "$dir/licenses/LICENSE-rehearth.txt"
           cp launcher/assets/fonts/OFL.txt "$dir/licenses/OFL-google-sans.txt"
           cp mods/rehearth_patch/LICENSE.ace.md "$dir/licenses/LICENSE-ace.md"
           tar -czf rehearth-linux-x86_64.tar.gz "$dir"
           cp launcher/target/release/rehearth rehearth-linux-x86_64
+      - name: AppImage
+        run: |
+          mkdir -p AppDir/usr/bin
+          cp launcher/target/release/rehearth AppDir/usr/bin/
+          cp packaging/rehearth.desktop packaging/rehearth.png AppDir/
+          ln -s usr/bin/rehearth AppDir/AppRun
+          curl -fsSLo appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir ReHearth-x86_64.AppImage
+          ./ReHearth-x86_64.AppImage --appimage-extract-and-run --version
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --title "ReHearth ${GITHUB_REF_NAME#v}" --generate-notes \
-            rehearth-linux-x86_64.tar.gz rehearth-linux-x86_64 install.sh
+            ReHearth-x86_64.AppImage rehearth-linux-x86_64.tar.gz rehearth-linux-x86_64 install.sh

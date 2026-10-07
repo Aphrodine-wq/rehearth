@@ -25,6 +25,7 @@ impl App {
                 changed |= ui.checkbox(&mut self.cfg.auto_fix, "Fix mod problems automatically when I press Play").changed();
                 ui.label(RichText::new("Switches on mods your mods need, turns off duplicate or broken copies, and pins contested files. It never deletes anything.").color(DIM).small());
                 changed |= ui.checkbox(&mut self.cfg.close_on_launch, "Close ReHearth when the game starts").changed();
+                changed |= ui.checkbox(&mut self.cfg.check_updates, "Check for ReHearth updates when it starts").changed();
                 if changed {
                     actions.push(Action::SaveConfig);
                 }
@@ -35,6 +36,12 @@ impl App {
                 ui.add(egui::TextEdit::singleline(&mut self.cfg.extra_args).desired_width(f32::INFINITY));
                 if ui.button("Save").clicked() {
                     actions.push(Action::SaveConfig);
+                }
+                if !crate::update::in_app_menu() {
+                    ui.add_space(6.0);
+                    if ui.button("Add ReHearth to the app menu").clicked() {
+                        actions.push(Action::AddToAppMenu);
+                    }
                 }
             });
             ui.add_space(4.0);

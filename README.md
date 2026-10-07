@@ -1,85 +1,190 @@
-# ReHearth
+<p align="center">
+  <img src="packaging/rehearth.png" width="112" alt="ReHearth icon">
+</p>
 
-A launcher and mod manager for Stonehearth on Linux. It sorts out mod load order, finds the mod behind an
-error, installs Workshop mods without leaving the app, and ships a patch mod that cuts lag in big towns.
+<h1 align="center">ReHearth</h1>
+
+<p align="center">
+  A launcher and mod manager for Stonehearth on Linux.<br>
+  It fixes mod load order, tells you which mod broke your game, and installs Workshop mods without leaving the app.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Aphrodine-wq/rehearth/releases/latest"><img src="https://img.shields.io/github/v/release/Aphrodine-wq/rehearth?label=download&color=e8590c" alt="Latest release"></a>
+  <a href="https://github.com/Aphrodine-wq/rehearth/actions/workflows/ci.yml"><img src="https://github.com/Aphrodine-wq/rehearth/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/platform-Linux%20x86__64-555" alt="Linux x86_64">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Aphrodine-wq/rehearth?color=555" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#what-it-does">What it does</a> ·
+  <a href="#faq">FAQ</a> ·
+  <a href="#building-from-source">Build</a>
+</p>
+
+![ReHearth's home screen](docs/screenshots/home.jpg)
 
 > ReHearth is a fan project. It is not affiliated with or endorsed by Radiant Entertainment or Riot Games.
 > You need your own copy of Stonehearth on Steam.
 
-## Features
+## Why
 
-- **Mod load order, fixed for you.** ReHearth reads every mod's manifest and works out the order the
-  game will load them in. When you press PLAY it switches on mods your other mods depend on, keeps the
-  newest copy of a mod that's installed twice, and switches off mods that can't be read. When two mods
-  replace the same file, you pick which copy wins.
-- **Doctor.** After each session it reads `stonehearth.log`, groups the errors, names the mod that caused
-  each one and explains it in plain words. While the game runs it shows the log live.
-  - **Safe mode**: play one session with only the base game.
-  - **Find the problem mod**: halves the suspect mods each test session until one is left. It uses launch
-    arguments only, so your mod settings never change.
-  - Detailed logging for a single mod.
-- **Workshop in the app.** Browse and search the whole Stonehearth Workshop, then install and remove mods
-  through your running Steam client. No API key, no trip to the Steam overlay.
-- **Saves.** Back up saves to `.tar.gz` and restore them (your current saves are backed up first).
-- **The ReHearth patch mod** (built on ACE): bug and lag fixes for big towns. Install it from the Home
-  screen. See [mods/rehearth_patch](mods/rehearth_patch/README.md).
-- **Safe by default.** ReHearth never deletes anything it didn't create, and keeps a backup of your
-  `user_settings.json` before it first changes it.
+Stonehearth's last official update was 1.1.0.949, in 2018. The community kept it going: the
+[ACE](https://steamcommunity.com/sharedfiles/filedetails/?id=1577375188) project continues the game, and
+the Workshop has well over a thousand mods. Running a big mod list is still hard, though:
 
-## Getting started
+- Mods with no dependency between them load in no guaranteed order, so two mods that change the same
+  file can swap winners from one launch to the next.
+- A mod whose dependency is missing or switched off still loads, and fails quietly later.
+- When something breaks, the clue is one line somewhere in a long `stonehearth.log`.
+- Big towns get slow.
 
-1. Install Stonehearth from Steam and run it once, so it has a settings file.
-2. Install ReHearth:
+ReHearth sits in front of the game and deals with these. It reads the same manifests and settings the
+game does, shows you what it found, and fixes what it safely can before you press PLAY.
 
-   ```sh
-   curl -fsSL https://raw.githubusercontent.com/Aphrodine-wq/rehearth/main/install.sh | sh
-   ```
+## Install
 
-   This puts `rehearth` in `~/.local/bin` and adds **ReHearth** to your app menu. To do it by hand, download
-   `rehearth-linux-x86_64.tar.gz` from [Releases](https://github.com/Aphrodine-wq/rehearth/releases),
-   extract it and run `./install.sh` inside it.
-3. Open **ReHearth** from your app menu (or run `rehearth`).
-   - It finds Stonehearth in any of your Steam libraries, including Flatpak Steam. If it doesn't, set the
-     game folder in **Settings**.
-   - The Home screen shows your mod health. Press **Fix all**, or just press **PLAY**: fixes run then too.
-4. To use the lag fixes, subscribe to [ACE](https://steamcommunity.com/sharedfiles/filedetails/?id=1577375188)
-   (from the **Workshop** screen works) and install the ReHearth patch from **Home**.
+ReHearth runs on 64-bit Linux with glibc 2.35 or newer: Ubuntu 22.04, Debian 12, Fedora 36, SteamOS
+and anything newer. You need Steam (native or Flatpak) and Stonehearth installed.
 
-The game always starts through Steam (`steam -applaunch 253250`), so it keeps your Proton settings.
+### Option 1: AppImage (no install)
 
-To remove ReHearth: `curl -fsSL https://raw.githubusercontent.com/Aphrodine-wq/rehearth/main/install.sh | sh -s -- --uninstall`.
-Your mods, saves and game settings are left alone.
+1. Download **[ReHearth-x86_64.AppImage](https://github.com/Aphrodine-wq/rehearth/releases/latest/download/ReHearth-x86_64.AppImage)**.
+2. Make it runnable: right-click → Properties → "Allow executing as program", or
+   `chmod +x ReHearth-x86_64.AppImage`.
+3. Double-click it.
 
-### Requirements
+To get a menu entry, open **Settings** in ReHearth and press **Add ReHearth to the app menu**.
 
-- Linux, x86_64, with glibc 2.35 or newer (Ubuntu 22.04, Fedora 36, Debian 12, Arch, SteamOS and later).
-- Steam, native or Flatpak. Workshop installs need Steam running.
-- A GPU with Vulkan or OpenGL.
+### Option 2: one-line install
 
-### Screens
+```sh
+curl -fsSL https://raw.githubusercontent.com/Aphrodine-wq/rehearth/main/install.sh | sh
+```
 
-| Screen | What it's for |
+This puts `rehearth` in `~/.local/bin` and adds ReHearth to your app menu. Nothing needs root. To remove
+it, run the same line with `sh -s -- --uninstall` at the end. Your mods, saves and game settings stay.
+
+### Steam Deck
+
+Switch to Desktop Mode and use the AppImage (option 1). Running ReHearth from Game Mode hasn't been
+tested yet.
+
+### Updating
+
+ReHearth checks GitHub for a new version when it starts. When there is one, an **Update** button appears
+at the bottom of the menu; it downloads the new version in place and asks you to restart. You can turn
+the check off in **Settings**, or update from a terminal with `rehearth --update`.
+
+### First run
+
+1. Run Stonehearth once on its own first, so it has a settings file.
+2. Open ReHearth. It finds Stonehearth in any of your Steam libraries. If it doesn't, set the game
+   folder in **Settings**.
+3. The Home screen lists mod problems. Press **Fix all**, or just press **PLAY**; fixes run then too.
+4. For the lag fixes, subscribe to ACE (the **Workshop** screen has it under Recommended), then install
+   **ReHearth Patch** from Home.
+
+The game always starts through Steam, so it keeps your Proton version and launch options.
+
+## What it does
+
+| | |
 |---|---|
-| **Home** | the game's title art, mod health with **Fix all**, the last session, quick settings |
-| **Mods** | health check with one-click fixes, files two mods both replace (pick the winner), every mod in load order with on/off switches |
-| **Workshop** | browse, search, install and remove Workshop mods |
-| **Saves** | save list, backups, restore |
-| **Doctor** | errors from the last session blamed on a mod, the live log, safe mode, find the problem mod |
-| **Settings** | auto-fix on launch, game folder, extra launch arguments, graphics |
+| ![Mods screen](docs/screenshots/mods.jpg) | ![Workshop screen](docs/screenshots/workshop.jpg) |
+| **Mods.** A health check with one-click fixes, the files two mods both replace (you pick which copy wins), and every mod in the order the game will load it. | **Workshop.** Browse and search the whole Stonehearth Workshop, and install or remove mods through your running Steam client. |
+| ![Doctor screen](docs/screenshots/doctor.jpg) | |
+| **Doctor.** Reads the game's log after every session, groups the errors, names the mod behind each one and explains it in plain words. | |
 
-**PLAY** is at the bottom left on every screen.
+- **Automatic fixes.** When you press PLAY, ReHearth switches on mods your other mods need, keeps the
+  newest copy of a mod that's installed twice, switches off mods that can't be read, and pins every
+  contested file to the copy you chose. It never deletes your files.
+- **Find the problem mod.** Pick an error and ReHearth halves the list of suspect mods with each test
+  session until one is left. It does this with launch arguments only, so your mod settings never change.
+- **Safe mode.** Play one session with only the base game.
+- **Live log.** While the game runs, Doctor shows the log as it's written. You can turn on detailed
+  logging for a single mod.
+- **Saves.** Back up all saves to a `.tar.gz` and restore them. Your current saves are backed up before
+  a restore.
+- **Graphics settings.** Fullscreen, VSync, shadows, SSAO and draw distance, written to the game's own
+  settings file. ReHearth keeps a copy of the original.
 
-### Command line
+### The ReHearth patch mod
+
+ReHearth comes with a small game mod, **ReHearth Patch**, built on top of ACE. It's early: version 0.1.0
+has one fix so far.
+
+- **Item searches no longer run twice.** When a hearthling looks for an item "anywhere", the game
+  searches the ground and storage at the same time, and both searches kept going after one found
+  something. That doubled the pathfinding work for every find, and it gets worse as a town grows. Now the
+  first search to find something cancels the other.
+
+Doctor shows whether the patch loaded in your last session, and how many duplicate searches the log
+recorded. More fixes will follow as they're found and measured; see the [roadmap](#roadmap).
+
+## How mod loading works
+
+From the official modding guide and the engine itself: base mods load first, and every other mod loads
+after the mods in its manifest `dependencies`. A missing or switched-off dependency is silently ignored,
+mods in a dependency loop are switched off for the session, and when two mods override the same file the
+later one wins. Mods with no dependency between them have no guaranteed order.
+
+ReHearth fixes that last part by writing a generated mod, **ReHearth Load Order**
+(`mods/rehearth_load_order`). It depends on every mod in a file conflict and overrides each contested file
+with the chosen copy, pointing straight at that mod's file, so nothing is copied. The pick defaults to the
+most recently updated mod, and you can change it per file on the Mods screen. Deleting the folder undoes
+it.
+
+Debug-only mods like Debug Tools are left alone: other mods list them as load-order hints, not as real
+dependencies.
+
+## FAQ
+
+**ReHearth says Stonehearth wasn't found.**
+Set the folder by hand in **Settings**. It's the folder that contains `Stonehearth.exe`, usually
+`~/.local/share/Steam/steamapps/common/Stonehearth`.
+
+**Workshop installs don't start.**
+Steam must be running and signed in, because ReHearth installs through it. A download that makes no
+progress for two minutes is cancelled with a message.
+
+**Does it change my game files?**
+Only what you'd change in the game's own mod screen: `user_settings.json` (backed up first). It also adds
+its own folders to `mods/` (the load-order mod and the patch). It only ever deletes folders it created
+itself, which carry a `.rehearth-managed` marker.
+
+**Does it work with Flatpak Steam?**
+It finds and starts the game through Flatpak Steam. Workshop installs through Flatpak Steam haven't been
+tested.
+
+**Windows or Mac?**
+No. ReHearth is built for Linux, where Stonehearth runs through Proton.
+
+**Something went wrong. How do I report it?**
+[Open an issue](https://github.com/Aphrodine-wq/rehearth/issues) and include the output of
+`rehearth --report`. If it's about a game error, press **Copy report** in Doctor and paste that too.
+
+## Roadmap
+
+- A repeatable big-town benchmark, so lag fixes come with numbers. The pieces are in `mods/rehearth_bench`
+  and `tools/bench.sh`, but hearthlings in the test world don't haul yet, so it doesn't load the
+  simulation.
+- More patch fixes, each measured with that benchmark.
+- Tuning the game's Lua garbage collector (`lua.gc_step_pause`, `lua.gc_step_mul`) for large towns.
+
+## Command line
 
 | Flag | Effect |
 |---|---|
 | `--report` | print what ReHearth sees: game folder, version, mods in load order, problems |
 | `--fix` | apply the automatic mod fixes without opening a window |
+| `--update` | update ReHearth to the latest release |
 | `--browse [search]` | list Workshop mods as text |
-| `--tab <name>` | open on a screen (`home`, `mods`, `workshop`, `saves`, `doctor`, `settings`) |
+| `--tab <name>` | open on a screen: `home`, `mods`, `workshop`, `saves`, `doctor` or `settings` |
 | `--version` | print the version |
 
-### Where things are
+## Where things are
 
 | What | Where |
 |---|---|
@@ -87,30 +192,14 @@ Your mods, saves and game settings are left alone.
 | Workshop mods | `steamapps/workshop/content/253250/` in the same Steam library |
 | Game log | `stonehearth.log` in the Stonehearth folder |
 | Game settings | `user_settings.json` in the Stonehearth folder (backup: `user_settings.json.rehearth-bak`) |
-| Load-order fix mod | `mods/rehearth_load_order/` (generated, safe to delete) |
+| Load-order mod | `mods/rehearth_load_order/` (generated; delete it to undo) |
 | ReHearth settings | `~/.config/rehearth/config.json` |
 | Cached title art | `~/.cache/rehearth/art/` |
 
-## How mod loading works
-
-From the official modding guide and the engine: base mods load first, and every other mod loads after
-the mods in its manifest `dependencies`. A missing or switched-off dependency is silently ignored, mods
-in a dependency loop are switched off for the session, and when two mods override the same file the
-later one wins. Mods with no dependency between them have no guaranteed order.
-
-That last part is why mod setups break at random. ReHearth fixes it by writing **ReHearth Load Order**
-(`mods/rehearth_load_order`): a generated mod that depends on every mod in a file conflict and overrides
-each contested file with the chosen copy. It points straight at that mod's file, so nothing is copied.
-The pick defaults to the most recently updated mod, and you can change it per file on the **Mods**
-screen.
-
-Auto-fix leaves debug-only mods (like Debug Tools) alone, since other mods list them as load-order hints
-rather than real dependencies.
-
 ## Building from source
 
-You need Rust 1.95 or newer ([rustup](https://rustup.rs)). Nothing else: the fonts and the patch mod are
-built into the binary.
+You need Rust 1.95 or newer ([rustup](https://rustup.rs)). There are no other dependencies: the fonts,
+icon and patch mod are built into the binary.
 
 ```sh
 git clone https://github.com/Aphrodine-wq/rehearth
@@ -118,30 +207,34 @@ cd rehearth
 cargo install --path launcher
 ```
 
-Run the tests with `cargo test` in `launcher/`.
+Run the tests with `cargo test` in `launcher/`. A copy built from source never replaces itself; it only
+tells you when a release is out.
 
-To make a release, bump `version` in `launcher/Cargo.toml`, commit, and push a matching tag
-(`git tag v0.2.0 && git push --tags`). GitHub Actions builds it on Ubuntu 22.04 and publishes it.
+To publish a release, bump `version` in `launcher/Cargo.toml`, commit, and push a matching tag
+(`git tag v0.2.0 && git push --tags`). GitHub Actions builds it on Ubuntu 22.04 and uploads the AppImage,
+the tarball and the plain binary.
 
-## Project layout
+### Project layout
 
-| Folder | Contents |
+| Path | Contents |
 |---|---|
 | `launcher/` | the ReHearth app (Rust, egui) |
 | `launcher/src/tabs/` | one file per screen |
-| `launcher/src/loadorder.rs` | the load-order engine and auto-fix |
+| `launcher/src/loadorder.rs` | the load-order engine and automatic fixes |
 | `launcher/src/doctor.rs`, `bisect.rs` | log reading, blame, and find the problem mod |
 | `launcher/src/workshop.rs`, `steam.rs` | Workshop browsing, and installs through the Steam client |
+| `launcher/src/update.rs` | self-update and the app menu entry |
 | `mods/rehearth_patch/` | the patch mod (built into the launcher) |
-| `mods/rehearth_bench/`, `tools/bench.sh` | a scripted big-town benchmark (unfinished: hearthlings in the test world don't haul yet) |
-| `packaging/` | the desktop entry |
+| `mods/rehearth_bench/`, `tools/bench.sh` | the big-town benchmark (unfinished) |
+| `packaging/` | icon, desktop entry |
+| `install.sh` | the one-line installer |
 
-## Notes for modders
+### Notes for modders
 
 Things learned while building this:
 
-- Never run `steamcmd +login anonymous` against a real Steam library. It shares the library, treats owned
-  games as unlicensed, and deletes their files. ReHearth's Workshop installs go through the Steam
+- Never run `steamcmd +login anonymous` against a real Steam library. It shares the library, treats
+  owned games as unlicensed, and deletes their files. ReHearth installs Workshop mods through the Steam
   client's own `libsteam_api.so` instead.
 - Mods symlinked into `mods/` are invisible to the game under Proton. Copy them.
 - `--game.main_mod=<mod>` with `skip_title` hangs on a black screen in 1.1 (microworld too):
@@ -152,14 +245,16 @@ Things learned while building this:
 - Some base `.smod` files (Northern Alliance, Rayya's Children) contain several `manifest.json` files;
   read the shallowest one.
 
-## Third-party code
+## Credits
 
-ReHearth uses egui/eframe, wgpu, serde, ureq, image and libloading (see `launcher/Cargo.toml`), and
-bundles the Google Sans and Google Sans Code fonts under the SIL Open Font License
-([OFL.txt](launcher/assets/fonts/OFL.txt)). Parts of the patch mod are derived from
-[Stonehearth ACE](https://steamcommunity.com/sharedfiles/filedetails/?id=1577375188), MIT licensed by the Stonehearth ACE Team
-([LICENSE.ace.md](mods/rehearth_patch/LICENSE.ace.md)). Release downloads carry these license files in
-`licenses/`.
+- [Stonehearth ACE](https://github.com/StonehearthACE-team/stonehearth_ace) by the Stonehearth ACE Team.
+  Parts of the patch mod are derived from it under the MIT license
+  ([LICENSE.ace.md](mods/rehearth_patch/LICENSE.ace.md)).
+- Google Sans and Google Sans Code, under the SIL Open Font License
+  ([OFL.txt](launcher/assets/fonts/OFL.txt)).
+- Built with [egui](https://github.com/emilk/egui), wgpu, serde, ureq, image and libloading.
+
+Release downloads include these license files in `licenses/`.
 
 ## License
 

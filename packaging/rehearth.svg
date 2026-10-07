@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b2a1e"/>
+      <stop offset="1" stop-color="#1e140d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="128" cy="168" r="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="stone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d9cbb3"/>
+      <stop offset="1" stop-color="#a8977c"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#e8590c"/>
+      <stop offset="0.55" stop-color="#ff922b"/>
+      <stop offset="1" stop-color="#ffd43b"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#bg)"/>
+  <!-- firebox opening -->
+  <path d="M74 206 V140 a54 54 0 0 1 108 0 V206 Z" fill="#120b07"/>
+  <circle cx="128" cy="170" r="78" fill="url(#glow)"/>
+  <!-- stone arch: outer ring of blocks -->
+  <g fill="url(#stone)" stroke="#1e140d" stroke-width="5" stroke-linejoin="round">
+    <path d="M44 210 V146 H74 V210 Z"/>
+    <path d="M182 210 V146 H212 V210 Z"/>
+    <path d="M44 146 A84 84 0 0 1 60 96 L84 114 A54 54 0 0 0 74 146 Z"/>
+    <path d="M60 96 A84 84 0 0 1 104 66 L113 94 A54 54 0 0 0 84 114 Z"/>
+    <path d="M104 66 A84 84 0 0 1 152 66 L143 94 A54 54 0 0 0 113 94 Z"/>
+    <path d="M152 66 A84 84 0 0 1 196 96 L172 114 A54 54 0 0 0 143 94 Z"/>
+    <path d="M196 96 A84 84 0 0 1 212 146 H182 A54 54 0 0 0 172 114 Z"/>
+    <path d="M30 210 H226 V226 H30 Z"/>
+  </g>
+  <!-- logs -->
+  <g stroke="#1e140d" stroke-width="4" stroke-linecap="round">
+    <path d="M92 202 L164 186" stroke="#7a4a26" stroke-width="14"/>
+    <path d="M92 186 L164 202" stroke="#8f5a30" stroke-width="14"/>
+  </g>
+  <!-- flame -->
+  <path d="M128 102 C142 124 160 134 158 160 C157 180 144 192 128 192 C112 192 99 180 98 162 C97 146 106 138 112 128 C114 140 118 146 124 148 C120 132 120 118 128 102 Z" fill="url(#flame)"/>
+  <path d="M128 140 C136 152 144 160 142 172 C141 183 135 188 128 188 C121 188 115 183 114 174 C113 164 120 158 124 152 C125 158 127 160 130 161 C127 154 126 148 128 140 Z" fill="#fff3bf" opacity="0.9"/>
+</svg>

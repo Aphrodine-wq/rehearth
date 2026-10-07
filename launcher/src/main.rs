@@ -11,6 +11,7 @@ mod shop;
 mod steam;
 mod tabs;
 mod theme;
+mod update;
 mod workshop;
 
 use std::collections::{BTreeMap, HashSet};
@@ -70,6 +71,9 @@ struct Config {
     /// a "find the problem mod" run in progress
     #[serde(default)]
     bisect: Option<Bisect>,
+    /// look for a newer ReHearth on GitHub at startup
+    #[serde(default = "yes")]
+    check_updates: bool,
 }
 
 impl Default for Config {
@@ -81,6 +85,7 @@ impl Default for Config {
             auto_fix: true,
             conflict_winners: BTreeMap::new(),
             bisect: None,
+            check_updates: true,
         }
     }
 }
@@ -138,6 +143,8 @@ impl Tab {
 enum TaskResult {
     Message(String),
     Updates(Vec<String>),
+    /// ReHearth replaced itself; restart from this path
+    SelfUpdated(PathBuf),
 }
 
 struct Task {
@@ -178,6 +185,9 @@ enum Action {
     StartBisect(bisect::Target),
     BisectAnswer(bool),
     StopBisect,
+    SelfUpdate(String),
+    RestartUpdated,
+    AddToAppMenu,
 }
 
 struct App {
@@ -209,6 +219,12 @@ struct App {
     live_log: Vec<String>,
     live_errors_only: bool,
     verbose_pick: String,
+    /// the startup check for a newer ReHearth
+    update_check: Option<Receiver<Option<String>>>,
+    /// a newer ReHearth release, when there is one
+    new_version: Option<String>,
+    /// set once the new version is in place
+    updated: Option<PathBuf>,
 }
 
 fn date_cmd(ts: u64, fmt: &str) -> String {
@@ -264,7 +280,17 @@ impl App {
             live_log: Vec::new(),
             live_errors_only: false,
             verbose_pick: String::new(),
+            update_check: None,
+            new_version: None,
+            updated: None,
         };
+        if app.cfg.check_updates {
+            let (tx, rx) = channel();
+            thread::spawn(move || {
+                let _ = tx.send(update::check().ok().flatten());
+            });
+            app.update_check = Some(rx);
+        }
         app.refresh();
         // `rehearth --tab workshop` opens straight onto a screen
         let args: Vec<String> = std::env::args().collect();
@@ -369,6 +395,12 @@ impl App {
         if let Some((msg, err)) = self.shop.message.take() {
             if err { self.fail(msg) } else { self.say(msg) }
         }
+        if let Some(rx) = &self.update_check {
+            if let Ok(found) = rx.try_recv() {
+                self.new_version = found;
+                self.update_check = None;
+            }
+        }
         if let Some(task) = &self.task {
             if let Ok(result) = task.rx.try_recv() {
                 self.task = None;
@@ -381,6 +413,10 @@ impl App {
                             self.say(format!("Updates available: {}", names.join(", ")));
                         }
                         self.updates = names.into_iter().collect();
+                    }
+                    Ok(TaskResult::SelfUpdated(path)) => {
+                        self.say("ReHearth is updated. Restart it to use the new version.");
+                        self.updated = Some(path);
                     }
                     Err(e) => self.fail(e),
                 }
@@ -672,6 +708,21 @@ impl App {
                 self.save_config();
                 self.say("Stopped. Your mod settings were never changed.");
             }
+            Action::SelfUpdate(version) => {
+                self.spawn(&format!("Updating ReHearth to {version}"), move || {
+                    Ok(TaskResult::SelfUpdated(update::install(&version)?))
+                });
+            }
+            Action::RestartUpdated => {
+                if let Some(path) = &self.updated {
+                    update::restart(path);
+                    std::process::exit(0);
+                }
+            }
+            Action::AddToAppMenu => match update::add_to_app_menu() {
+                Ok(_) => self.say("ReHearth is in your app menu now."),
+                Err(e) => self.fail(format!("Couldn't add ReHearth to the app menu: {e:#}")),
+            },
         }
     }
 }
@@ -784,11 +835,25 @@ impl App {
         ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
             ui.add_space(14.0);
             ui.horizontal(|ui| {
-                ui.label(RichText::new(format!("ReHearth {}", env!("CARGO_PKG_VERSION"))).color(DIM).small());
+                ui.label(RichText::new(format!("ReHearth {}", update::current())).color(DIM).small());
                 if let Some(v) = &self.version {
                     ui.label(RichText::new(format!("· Stonehearth {}", v.trim_end_matches(" (x64)"))).color(DIM).small());
                 }
             });
+            if self.updated.is_some() {
+                if ui.button(RichText::new("Restart to finish updating").color(AMBER)).clicked() {
+                    actions.push(Action::RestartUpdated);
+                }
+            } else if let Some(v) = &self.new_version {
+                if update::Install::detect().can_replace() {
+                    let busy = self.task.is_some();
+                    if ui.add_enabled(!busy, egui::Button::new(RichText::new(format!("Update to ReHearth {v}")).color(AMBER))).clicked() {
+                        actions.push(Action::SelfUpdate(v.clone()));
+                    }
+                } else {
+                    ui.label(RichText::new(format!("ReHearth {v} is out (git pull to update)")).color(AMBER).small());
+                }
+            }
             // status: download, background job, or the last message
             if let Some((title, progress, queued)) = self.shop.downloading() {
                 let f = progress.filter(|p| p.1 > 0).map(|(d, t)| d as f32 / t as f32);
@@ -943,11 +1008,19 @@ fn print_report() {
     println!("\n{}", doctor::to_text(&doctor::read(&paths.log())));
 }
 
+fn window_icon() -> egui::IconData {
+    let rgba = image::load_from_memory(update::ICON_PNG).map(|i| i.to_rgba8()).unwrap_or_default();
+    egui::IconData { width: rgba.width(), height: rgba.height(), rgba: rgba.into_raw() }
+}
+
 fn main() -> eframe::Result {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("--version") {
-        println!("rehearth {}", env!("CARGO_PKG_VERSION"));
+        println!("rehearth {}", update::current());
         return Ok(());
+    }
+    if args.first().map(String::as_str) == Some("--update") {
+        std::process::exit(update::run_cli());
     }
     if args.first().map(String::as_str) == Some("--browse") {
         // `rehearth --browse [search]`: the Workshop as the launcher sees it
@@ -993,7 +1066,8 @@ fn main() -> eframe::Result {
             .with_title("ReHearth")
             .with_app_id("rehearth")
             .with_inner_size([1360.0, 860.0])
-            .with_min_inner_size([1060.0, 660.0]),
+            .with_min_inner_size([1060.0, 660.0])
+            .with_icon(window_icon()),
         renderer: eframe::Renderer::Wgpu,
         ..Default::default()
     };

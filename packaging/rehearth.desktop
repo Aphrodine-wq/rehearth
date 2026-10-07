@@ -2,7 +2,7 @@
 Name=ReHearth
 Comment=Stonehearth launcher and mod manager
 Exec=rehearth
-Icon=steam_icon_253250
+Icon=rehearth
 Terminal=false
 Type=Application
 Categories=Game;
