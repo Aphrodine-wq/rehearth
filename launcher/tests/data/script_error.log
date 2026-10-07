@@ -1,0 +1,26 @@
+2026-10-06 23:01:41.591610 |       server |  1 |                              app | Stonehearth Version 1.1.0.949 (x64)
+2026-10-06 23:01:46.484589 |       server |  1 |                         lua.code | generating traceback...
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code | -- Script Error (lua) Begin ------------------------------- 
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    radiant/lib/util.lua:234: attempt to concatenate local 'modname' (a nil value)
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    stack traceback:
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    	[C]: ?
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    	radiant/lib/util.lua:234: in function <radiant/lib/util.lua:228>
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    	(tail call): ?
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    	rehearth_bench/worlds/big_town_world.lua:56: in function '__user_init'
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    	radiant/lib/unclasslib.lua:270: in function '__init'
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    	radiant/lib/unclasslib.lua:201: in function 'World'
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    	rehearth_bench/rehearth_bench_server.lua:29: in function <rehearth_bench/rehearth_bench_server.lua:15>
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    	[C]: ?
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    	[C]: in function 'trigger'
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code |    	radiant/modules/events.lua:55: in function <radiant/modules/events.lua:55>
+2026-10-06 23:01:46.484589 |       server |  0 |                         lua.code | -- Lua Error End   ------------------------------- 
+	"session" : {
+		"player_id" : "player_1",
+		"client_id" : "host",
+		"provider" : "host"
+	},
+	"state" : "configuring"
+2026-10-06 23:01:47.250585 |       client |  1 |                         lua.code | unrecognized object type 'boxed' in json_to_lua!
+2026-10-06 23:01:47.250585 |       client |  1 |                         lua.code | unrecognized object type 'boxed' in json_to_lua!
+2026-10-06 23:01:47.411585 |       server |  1 |                         lua.code | unrecognized object type 'boxed' in json_to_lua!
+2026-10-06 23:01:47.411585 |       server |  1 |                         lua.code | unrecognized object type 'boxed' in json_to_lua!

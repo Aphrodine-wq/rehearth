@@ -1,0 +1,20 @@
+[package]
+name = "rehearth"
+version = "0.1.0"
+edition = "2024"
+description = "Launcher and mod manager for Stonehearth on Linux"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
+libloading = "0.8"
+eframe = { version = "0.36.1", default-features = false, features = ["default_fonts", "wayland", "wgpu", "x11"] }
+egui = "0.36.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+ureq = "3"
+
+[profile.release]
+lto = "thin"
+strip = true

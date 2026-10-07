@@ -1,0 +1,18 @@
+{
+   "info" : {
+      "name" : "ReHearth Benchmark",
+      "namespace" : "rehearth_bench",
+      "is_debug_mod" : true,
+      "client_only" : true,
+      "version" : 3,
+      "default_enabled" : false
+   },
+
+   "server_init_script" : "file(rehearth_bench_server)",
+
+   "ui" : {
+      "skip_title" : true,
+      "empty" : "http://radiant/stonehearth/ui/root/empty.html",
+      "homepage" : "http://radiant/stonehearth/ui/root/index.html"
+   }
+}

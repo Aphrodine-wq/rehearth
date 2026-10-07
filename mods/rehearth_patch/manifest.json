@@ -1,0 +1,19 @@
+{
+   "info" : {
+      "name" : "ReHearth Patch",
+      "namespace" : "rehearth_patch",
+      "version" : 3
+   },
+
+   "dependencies" : [
+      "stonehearth",
+      "stonehearth_ace"
+   ],
+
+   "server_init_script" : "file(rehearth_patch_server)",
+
+   "overrides" : {
+      "stonehearth/ai/actions/find_reachable_entity_type_anywhere.lua" : "file(ai/actions/find_reachable_entity_type_anywhere.lua)",
+      "stonehearth_ace/ai/actions/find_reachable_entity_type_anywhere.lua" : "file(ai/actions/find_reachable_entity_type_anywhere.lua)"
+   }
+}
