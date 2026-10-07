@@ -73,6 +73,8 @@ pub struct Shop {
     active: Option<Active>,
     /// Set when something was installed or removed, so the app rescans mods.
     pub changed: bool,
+    /// Jobs that ended since the app last looked, and whether they worked.
+    pub finished: Vec<(Job, bool)>,
     pub message: Option<(String, bool)>,
     confirm_remove: Option<u64>,
 }
@@ -120,6 +122,7 @@ impl Shop {
             queue: VecDeque::new(),
             active: None,
             changed: false,
+            finished: Vec::new(),
             message: None,
             confirm_remove: None,
         };
@@ -200,6 +203,20 @@ impl Shop {
         self.enqueue(Job { id, title, kind: JobKind::Install });
     }
 
+    /// Makes an item found elsewhere (e.g. a needed-mod lookup) known here,
+    /// so installs get its title and required items.
+    pub fn remember(&mut self, item: &Item) {
+        self.known.entry(item.id).or_insert_with(|| item.clone());
+    }
+
+    /// Opens the Workshop screen's search on `text`.
+    pub fn search_for(&mut self, ctx: &egui::Context, text: &str) {
+        self.search = text.to_string();
+        self.page = 1;
+        self.open = None;
+        self.reload(ctx);
+    }
+
     pub fn remove(&mut self, id: u64, title: String) {
         self.enqueue(Job { id, title, kind: JobKind::Remove });
     }
@@ -272,6 +289,7 @@ impl Shop {
             if let Some(result) = finished {
                 let job = self.active.take().expect("active job").job;
                 self.changed = true;
+                self.finished.push((job.clone(), result.is_ok()));
                 self.message = Some(match (result, job.kind) {
                     (Ok(()), JobKind::Install) => (format!("Installed {}", job.title), false),
                     (Ok(()), JobKind::Remove) => (format!("Removed {}", job.title), false),

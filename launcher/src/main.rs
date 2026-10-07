@@ -6,6 +6,7 @@ mod doctor;
 mod game;
 mod loadorder;
 mod mods;
+mod needed;
 mod saves;
 mod shop;
 mod steam;
@@ -14,7 +15,7 @@ mod theme;
 mod update;
 mod workshop;
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -74,6 +75,12 @@ struct Config {
     /// look for a newer ReHearth on GitHub at startup
     #[serde(default = "yes")]
     check_updates: bool,
+    /// Workshop items confirmed to provide a namespace
+    #[serde(default)]
+    needed_known: BTreeMap<String, u64>,
+    /// Workshop items found not to be the namespace they were picked for
+    #[serde(default)]
+    needed_wrong: BTreeMap<String, Vec<u64>>,
 }
 
 impl Default for Config {
@@ -86,6 +93,8 @@ impl Default for Config {
             conflict_winners: BTreeMap::new(),
             bisect: None,
             check_updates: true,
+            needed_known: BTreeMap::new(),
+            needed_wrong: BTreeMap::new(),
         }
     }
 }
@@ -145,6 +154,14 @@ enum TaskResult {
     Updates(Vec<String>),
     /// ReHearth replaced itself; restart from this path
     SelfUpdated(PathBuf),
+    /// the Workshop lookup for mods that other mods need
+    Needed(Vec<needed::Found>),
+}
+
+/// A row in the "needed mods" list: what was found, and whether to install it.
+struct NeededRow {
+    found: needed::Found,
+    install: bool,
 }
 
 struct Task {
@@ -188,6 +205,11 @@ enum Action {
     SelfUpdate(String),
     RestartUpdated,
     AddToAppMenu,
+    /// look up mods that other mods need (namespaces) on the Workshop
+    FindNeeded(Vec<String>),
+    InstallNeeded,
+    CancelNeeded,
+    SearchWorkshop(String),
 }
 
 struct App {
@@ -225,6 +247,10 @@ struct App {
     new_version: Option<String>,
     /// set once the new version is in place
     updated: Option<PathBuf>,
+    /// the needed-mods lookup result, waiting for the player to confirm
+    needed: Option<Vec<NeededRow>>,
+    /// installs started for a needed namespace (Workshop id -> namespace), to check once they land
+    needed_pending: HashMap<u64, String>,
 }
 
 fn date_cmd(ts: u64, fmt: &str) -> String {
@@ -283,6 +309,8 @@ impl App {
             update_check: None,
             new_version: None,
             updated: None,
+            needed: None,
+            needed_pending: HashMap::new(),
         };
         if app.cfg.check_updates {
             let (tx, rx) = channel();
@@ -392,6 +420,9 @@ impl App {
         if std::mem::take(&mut self.shop.changed) {
             self.refresh();
         }
+        for (job, ok) in std::mem::take(&mut self.shop.finished) {
+            self.check_needed(job, ok);
+        }
         if let Some((msg, err)) = self.shop.message.take() {
             if err { self.fail(msg) } else { self.say(msg) }
         }
@@ -413,6 +444,17 @@ impl App {
                             self.say(format!("Updates available: {}", names.join(", ")));
                         }
                         self.updates = names.into_iter().collect();
+                    }
+                    Ok(TaskResult::Needed(found)) => {
+                        let hits = found.iter().filter(|f| f.item.is_some()).count();
+                        self.say(format!("Found {hits} of {} needed mods on the Workshop.", found.len()));
+                        for f in &found {
+                            if let Some(item) = &f.item {
+                                self.shop.remember(item);
+                            }
+                        }
+                        self.needed = Some(found.into_iter().map(|f| NeededRow { install: f.item.is_some(), found: f }).collect());
+                        self.tab = Tab::Mods;
                     }
                     Ok(TaskResult::SelfUpdated(path)) => {
                         self.say("ReHearth is updated. Restart it to use the new version.");
@@ -438,6 +480,37 @@ impl App {
         }
         let wait = if self.task.is_some() || self.running { 250 } else { 1000 };
         ctx.request_repaint_after(Duration::from_millis(wait));
+    }
+
+    /// A Workshop job ended. If it was a download for a needed mod, check the
+    /// mod it brought is really that namespace; take it back out if not.
+    fn check_needed(&mut self, job: shop::Job, ok: bool) {
+        if job.kind != shop::JobKind::Install {
+            return;
+        }
+        let Some(namespace) = self.needed_pending.remove(&job.id) else { return };
+        if !ok {
+            return;
+        }
+        let id = job.id.to_string();
+        let got = self.mods.iter().find(|m| m.workshop_id.as_deref() == Some(id.as_str())).map(|m| m.namespace.clone());
+        match got {
+            Some(ns) if ns == namespace => {
+                self.cfg.needed_known.insert(namespace, job.id);
+                self.save_config();
+            }
+            Some(ns) => {
+                self.cfg.needed_wrong.entry(namespace.clone()).or_default().push(job.id);
+                self.save_config();
+                self.shop.remove(job.id, job.title.clone());
+                self.fail(format!(
+                    "{} turned out to be \"{ns}\", not the \"{namespace}\" mod, so ReHearth is removing it again. Search the Workshop for the right one.",
+                    job.title
+                ));
+            }
+            // not readable yet (Steam may still be unpacking); leave it be
+            None => {}
+        }
     }
 
     /// The game just closed: read its log, and judge a problem-mod test if one ran.
@@ -546,6 +619,21 @@ impl App {
                 self.reanalyze();
             }
             Action::ApplyFixes(fixes) => {
+                let wanted: Vec<String> = fixes
+                    .iter()
+                    .filter_map(|(_, f)| match f {
+                        Fix::FindOnWorkshop(list) => Some(list.clone()),
+                        _ => None,
+                    })
+                    .flatten()
+                    .collect();
+                if !wanted.is_empty() {
+                    self.apply(Action::FindNeeded(wanted), ctx);
+                }
+                let fixes: Vec<_> = fixes.into_iter().filter(|(_, f)| !matches!(f, Fix::FindOnWorkshop(_))).collect();
+                if fixes.is_empty() {
+                    return;
+                }
                 let (Some(paths), Some(settings)) = (&self.paths, &mut self.settings) else { return };
                 match loadorder::apply(&fixes, &self.mods, paths, settings, &self.analysis) {
                     Ok((changes, installs)) => {
@@ -718,6 +806,35 @@ impl App {
                     update::restart(path);
                     std::process::exit(0);
                 }
+            }
+            Action::FindNeeded(mut namespaces) => {
+                namespaces.sort();
+                namespaces.dedup();
+                let (known, wrong) = (self.cfg.needed_known.clone(), self.cfg.needed_wrong.clone());
+                let n = namespaces.len();
+                self.spawn(&format!("Looking up {n} needed mod{} on the Workshop", if n == 1 { "" } else { "s" }), move || {
+                    Ok(TaskResult::Needed(needed::find(&namespaces, &known, &wrong)?))
+                });
+            }
+            Action::InstallNeeded => {
+                let Some(rows) = self.needed.take() else { return };
+                let mut titles = Vec::new();
+                for row in rows.into_iter().filter(|r| r.install) {
+                    let Some(item) = row.found.item else { continue };
+                    self.needed_pending.insert(item.id, row.found.namespace);
+                    self.shop.install(item.id, &self.installed_ids);
+                    titles.push(item.title);
+                }
+                if titles.is_empty() {
+                    self.say("Nothing picked to install.");
+                } else {
+                    self.say(format!("Downloading {} through Steam.", titles.join(", ")));
+                }
+            }
+            Action::CancelNeeded => self.needed = None,
+            Action::SearchWorkshop(text) => {
+                self.tab = Tab::Workshop;
+                self.shop.search_for(ctx, &text);
             }
             Action::AddToAppMenu => match update::add_to_app_menu() {
                 Ok(_) => self.say("ReHearth is in your app menu now."),
@@ -1051,6 +1168,40 @@ fn main() -> eframe::Result {
         match loadorder::auto_fix(&paths, &cfg.conflict_winners) {
             Ok((changes, _)) if changes.is_empty() => println!("Nothing to fix."),
             Ok((changes, _)) => changes.iter().for_each(|c| println!("{c}")),
+            Err(e) => {
+                eprintln!("{e:#}");
+                std::process::exit(1);
+            }
+        }
+        return Ok(());
+    }
+    if args.first().map(String::as_str) == Some("--find-needed") {
+        // `rehearth --find-needed`: what "Install all needed mods" would pick
+        let cfg = Config::load();
+        let Some(paths) = game::locate(cfg.game_dir.as_deref()) else {
+            eprintln!("Stonehearth not found");
+            std::process::exit(1);
+        };
+        let mods = mods::scan(&paths);
+        let Ok(settings) = UserSettings::load(&paths) else {
+            eprintln!("couldn't read user_settings.json");
+            std::process::exit(1);
+        };
+        let a = loadorder::analyze(&mods, &settings, &cfg.conflict_winners, loadorder::current(&paths).as_ref());
+        let missing: Vec<String> = a.missing.keys().cloned().collect();
+        if missing.is_empty() {
+            println!("No needed mods are missing.");
+            return Ok(());
+        }
+        match needed::find(&missing, &cfg.needed_known, &cfg.needed_wrong) {
+            Ok(found) => {
+                for f in found {
+                    match f.item {
+                        Some(i) => println!("  {:<20} → {} ({}, {} subs)", f.namespace, i.title, i.id, i.subscriptions),
+                        None => println!("  {:<20} → not found", f.namespace),
+                    }
+                }
+            }
             Err(e) => {
                 eprintln!("{e:#}");
                 std::process::exit(1);

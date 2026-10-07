@@ -39,6 +39,10 @@ impl App {
         let enabled: Vec<bool> = self.mods.iter().map(|m| m.is_enabled(settings)).collect();
 
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+            if self.needed.is_some() {
+                self.needed_card(ui, actions);
+                ui.add_space(4.0);
+            }
             self.health_card(ui, actions);
             ui.add_space(4.0);
             if !self.analysis.conflicts.is_empty() {
@@ -118,15 +122,90 @@ impl App {
                 });
             }
             let all: Vec<_> = issues.iter().filter_map(|i| i.fix.clone()).collect();
-            if all.len() > 1 {
-                ui.add_space(4.0);
-                if accent_button(ui, "Fix everything", !self.running) {
+            let missing: Vec<String> = self.analysis.missing.keys().cloned().collect();
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                if all.len() > 1 && accent_button(ui, "Fix everything", !self.running) {
                     actions.push(Action::ApplyFixes(all));
                 }
-            }
+                if !missing.is_empty() && self.needed.is_none() {
+                    let label = format!("Install all needed mods ({})", missing.len());
+                    if ui.add_enabled(self.task.is_none(), egui::Button::new(label)).clicked() {
+                        actions.push(Action::FindNeeded(missing));
+                    }
+                }
+            });
             if issues.iter().any(|i| i.level == Level::Problem && i.fix.is_none()) {
                 ui.label(RichText::new("Problems without a button need a choice from you: switch the mod off below or update it.").color(DIM).small());
             }
+        });
+    }
+
+    /// The needed-mods lookup result: what was found for each missing mod,
+    /// with a tick box each, waiting for the go-ahead.
+    fn needed_card(&mut self, ui: &mut egui::Ui, actions: &mut Vec<Action>) {
+        let needers = |ns: &str| -> String {
+            let list: Vec<&str> = self
+                .analysis
+                .missing
+                .get(ns)
+                .map(|v| v.iter().map(|&i| self.mods[i].name.as_str()).collect())
+                .unwrap_or_default();
+            list.join(", ")
+        };
+        let labels: Vec<String> = self.needed.iter().flatten().map(|r| needers(&r.found.namespace)).collect();
+        let Some(rows) = &mut self.needed else { return };
+        card(ui, |ui| {
+            card_title(ui, "Needed mods");
+            ui.label(RichText::new("Found on the Workshop by name. After each download ReHearth checks it's the right mod, and removes it again if it isn't.").color(DIM).small());
+            ui.add_space(4.0);
+            for (row, for_whom) in rows.iter_mut().zip(&labels) {
+                let ns = row.found.namespace.clone();
+                ui.horizontal(|ui| match &row.found.item {
+                    Some(item) => {
+                        ui.checkbox(&mut row.install, "");
+                        ui.vertical(|ui| {
+                            ui.label(RichText::new(&item.title).font(FontId::new(15.5, art::medium_family())));
+                            let mut info = format!("{ns} · for {for_whom}");
+                            if item.subscriptions > 0 {
+                                info.push_str(&format!(" · {} subscribers", crate::workshop::human_count(item.subscriptions)));
+                            }
+                            if item.file_size > 0 {
+                                info.push_str(&format!(" · {}", crate::workshop::human_size(item.file_size)));
+                            }
+                            ui.label(RichText::new(info).color(DIM).small());
+                        });
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.button("Details").clicked() {
+                                actions.push(Action::ShowWorkshopItem(item.id));
+                            }
+                        });
+                    }
+                    None => {
+                        ui.label(RichText::new("●").color(AMBER));
+                        ui.vertical(|ui| {
+                            ui.label(RichText::new(format!("{ns}: not found on the Workshop")).font(FontId::new(15.5, art::medium_family())));
+                            ui.label(RichText::new(format!("for {for_whom} · it may be named differently, or not be on the Workshop")).color(DIM).small());
+                        });
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.button("Search").clicked() {
+                                actions.push(Action::SearchWorkshop(ns.replace('_', " ")));
+                            }
+                        });
+                    }
+                });
+            }
+            ui.add_space(4.0);
+            let picked = rows.iter().filter(|r| r.install && r.found.item.is_some()).count();
+            ui.horizontal(|ui| {
+                let label = format!("Install {picked} mod{}", if picked == 1 { "" } else { "s" });
+                if accent_button(ui, &label, picked > 0 && !self.running) {
+                    actions.push(Action::InstallNeeded);
+                }
+                if ui.button("Cancel").clicked() {
+                    actions.push(Action::CancelNeeded);
+                }
+            });
         });
     }
 

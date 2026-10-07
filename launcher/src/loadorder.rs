@@ -45,6 +45,8 @@ pub enum Fix {
     Enable(Vec<usize>),
     Disable(Vec<usize>),
     InstallWorkshop(u64, String),
+    /// look these namespaces up on the Workshop and offer to install them
+    FindOnWorkshop(Vec<String>),
     /// (re)write or remove the generated load-order mod
     WriteLoadOrder,
 }
@@ -80,6 +82,8 @@ pub struct Analysis {
     /// what ReHearth Load Order should contain right now (target -> source)
     pub wanted_overrides: BTreeMap<String, String>,
     pub wanted_dependencies: BTreeSet<String>,
+    /// namespaces enabled mods depend on that aren't installed, with who needs them
+    pub missing: BTreeMap<String, Vec<usize>>,
 }
 
 impl Analysis {
@@ -210,10 +214,14 @@ pub fn analyze(
             level: if known.is_some() { Level::Problem } else { Level::Warning },
             title: format!("{} needs {}, which isn't installed", names(mods, needers), known.map(|k| k.2).unwrap_or(dep)),
             detail: "The game loads it anyway, but anything it builds on will be missing and it may throw errors.".into(),
-            fix: known.map(|(_, id, label)| (format!("Install {label}"), Fix::InstallWorkshop(*id, label.to_string()))),
+            fix: Some(match known {
+                Some((_, id, label)) => (format!("Install {label}"), Fix::InstallWorkshop(*id, label.to_string())),
+                None => ("Find and install".into(), Fix::FindOnWorkshop(vec![dep.to_string()])),
+            }),
             automatic: false,
         });
     }
+    a.missing = missing.iter().map(|(dep, needers)| (dep.to_string(), needers.clone())).collect();
     for &i in &enabled {
         let m = &mods[i];
         if m.kind != ModKind::Base && m.api_version.is_some_and(|v| v < 3) {
@@ -434,6 +442,8 @@ pub fn apply(
                 changes.push(format!("switched off {}", names(mods, list)));
             }
             Fix::InstallWorkshop(id, label) => installs.push((*id, label.clone())),
+            // the caller looks these up; nothing to change here
+            Fix::FindOnWorkshop(_) => {}
             Fix::WriteLoadOrder => {
                 write(paths, analysis, settings)?;
                 changes.push(if analysis.wanted_overrides.is_empty() {

@@ -97,6 +97,10 @@ The game always starts through Steam, so it keeps your Proton version and launch
 | ![Doctor screen](docs/screenshots/doctor.jpg) | |
 | **Doctor.** Reads the game's log after every session, groups the errors, names the mod behind each one and explains it in plain words. | |
 
+- **Install all needed mods.** When your mods depend on mods you don't have, one button looks them all
+  up on the Workshop and lists what it found, and one more installs them. Manifests only name a mod's
+  internal name, so the match is made by title; after each download ReHearth checks the mod really is
+  the one that was needed, and removes it again if it isn't. Anything it can't find gets a Search button.
 - **Automatic fixes.** When you press PLAY, ReHearth switches on mods your other mods need, keeps the
   newest copy of a mod that's installed twice, switches off mods that can't be read, and pins every
   contested file to the copy you chose. It never deletes your files.
@@ -179,6 +183,7 @@ No. ReHearth is built for Linux, where Stonehearth runs through Proton.
 |---|---|
 | `--report` | print what ReHearth sees: game folder, version, mods in load order, problems |
 | `--fix` | apply the automatic mod fixes without opening a window |
+| `--find-needed` | look up the missing mods your mods need, and show what would be installed |
 | `--update` | update ReHearth to the latest release |
 | `--browse [search]` | list Workshop mods as text |
 | `--tab <name>` | open on a screen: `home`, `mods`, `workshop`, `saves`, `doctor` or `settings` |
@@ -223,6 +228,7 @@ the tarball and the plain binary.
 | `launcher/src/loadorder.rs` | the load-order engine and automatic fixes |
 | `launcher/src/doctor.rs`, `bisect.rs` | log reading, blame, and find the problem mod |
 | `launcher/src/workshop.rs`, `steam.rs` | Workshop browsing, and installs through the Steam client |
+| `launcher/src/needed.rs` | finding mods that other mods need on the Workshop |
 | `launcher/src/update.rs` | self-update and the app menu entry |
 | `mods/rehearth_patch/` | the patch mod (built into the launcher) |
 | `mods/rehearth_bench/`, `tools/bench.sh` | the big-town benchmark (unfinished) |
