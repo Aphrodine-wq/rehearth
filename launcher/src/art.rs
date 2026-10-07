@@ -62,10 +62,9 @@ fn cache_dir() -> PathBuf {
 
 /// Steam's own artwork for the game, kept by the client for its library view.
 fn steam_library_art(file: &str) -> Option<Vec<u8>> {
-    let home = PathBuf::from(std::env::var_os("HOME")?);
-    [".local/share/Steam", ".steam/steam"]
-        .iter()
-        .map(|root| home.join(root).join("appcache/librarycache").join(crate::game::APP_ID).join(file))
+    crate::game::steam_roots()
+        .into_iter()
+        .map(|root| root.join("appcache/librarycache").join(crate::game::APP_ID).join(file))
         .find_map(|p| std::fs::read(p).ok())
 }
 

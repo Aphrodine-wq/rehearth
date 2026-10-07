@@ -945,6 +945,10 @@ fn print_report() {
 
 fn main() -> eframe::Result {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("--version") {
+        println!("rehearth {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
     if args.first().map(String::as_str) == Some("--browse") {
         // `rehearth --browse [search]`: the Workshop as the launcher sees it
         match workshop::browse(workshop::Sort::Trending, &args[1..].join(" "), 1) {

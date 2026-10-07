@@ -30,10 +30,9 @@ const DOWNLOAD_PENDING: u32 = 32;
 const STALL_TIMEOUT: Duration = Duration::from_secs(120);
 
 fn library_path() -> Option<PathBuf> {
-    let home = PathBuf::from(std::env::var_os("HOME")?);
-    [".local/share/Steam/steamrt64", ".steam/steam/steamrt64", ".steam/root/steamrt64"]
-        .iter()
-        .map(|d| home.join(d).join("libsteam_api.so"))
+    crate::game::steam_roots()
+        .into_iter()
+        .map(|root| root.join("steamrt64/libsteam_api.so"))
         .find(|p| p.is_file())
 }
 

@@ -1,0 +1,41 @@
+name: Release
+
+# Push a tag like v0.2.0 (matching launcher/Cargo.toml) to build and publish a release.
+# Built on Ubuntu 22.04 so the binary runs on any distro with glibc 2.35 or newer.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check the tag matches the crate version
+        run: |
+          version=$(grep -m1 '^version' launcher/Cargo.toml | cut -d'"' -f2)
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != Cargo.toml v$version"; exit 1; }
+      - run: cargo build --release --locked
+        working-directory: launcher
+      - run: cargo test --release --locked
+        working-directory: launcher
+      - name: Package
+        run: |
+          dir=rehearth-${GITHUB_REF_NAME#v}-linux-x86_64
+          mkdir -p "$dir/licenses"
+          cp launcher/target/release/rehearth install.sh packaging/rehearth.desktop README.md "$dir/"
+          cp LICENSE "$dir/licenses/LICENSE-rehearth.txt"
+          cp launcher/assets/fonts/OFL.txt "$dir/licenses/OFL-google-sans.txt"
+          cp mods/rehearth_patch/LICENSE.ace.md "$dir/licenses/LICENSE-ace.md"
+          tar -czf rehearth-linux-x86_64.tar.gz "$dir"
+          cp launcher/target/release/rehearth rehearth-linux-x86_64
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "ReHearth ${GITHUB_REF_NAME#v}" --generate-notes \
+            rehearth-linux-x86_64.tar.gz rehearth-linux-x86_64 install.sh

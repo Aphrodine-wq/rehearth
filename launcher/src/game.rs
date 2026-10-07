@@ -33,10 +33,19 @@ fn home() -> PathBuf {
     PathBuf::from(std::env::var_os("HOME").unwrap_or_default())
 }
 
+/// Where a Steam client may live: the native install, its legacy symlink, and Flatpak Steam.
+pub fn steam_roots() -> Vec<PathBuf> {
+    let home = home();
+    [".local/share/Steam", ".steam/steam", ".steam/root", ".var/app/com.valvesoftware.Steam/.local/share/Steam"]
+        .iter()
+        .map(|d| home.join(d))
+        .collect()
+}
+
 /// Steam library roots, from libraryfolders.vdf plus the default install.
 fn steam_libraries() -> Vec<PathBuf> {
     let mut libs = Vec::new();
-    for root in [home().join(".local/share/Steam"), home().join(".steam/steam")] {
+    for root in steam_roots() {
         let vdf = root.join("steamapps/libraryfolders.vdf");
         if let Ok(text) = fs::read_to_string(&vdf) {
             for line in text.lines() {
@@ -97,17 +106,23 @@ pub fn is_running() -> bool {
 
 /// Starts the game through Steam so it uses the player's Proton setup.
 /// `session_args` apply to this launch only (safe mode, problem-mod tests).
+/// Falls back to Flatpak Steam when there's no `steam` command.
 pub fn launch(extra_args: &str, session_args: &[String]) -> Result<()> {
-    Command::new("steam")
-        .arg("-applaunch")
-        .arg(APP_ID)
-        .args(extra_args.split_whitespace())
-        .args(session_args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .context("couldn't run `steam` (is Steam installed?)")?;
+    let run = |program: &str, prefix: &[&str]| {
+        Command::new(program)
+            .args(prefix)
+            .arg("-applaunch")
+            .arg(APP_ID)
+            .args(extra_args.split_whitespace())
+            .args(session_args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+    };
+    run("steam", &[])
+        .or_else(|_| run("flatpak", &["run", "com.valvesoftware.Steam"]))
+        .context("couldn't start Steam (is it installed?)")?;
     Ok(())
 }
 
