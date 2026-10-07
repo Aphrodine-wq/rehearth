@@ -99,9 +99,11 @@ The game always starts through Steam, so it keeps your Proton version and launch
 | **Doctor.** Reads the game's log after every session, groups the errors, names the mod behind each one and explains it in plain words. | |
 
 - **Install all needed mods.** When your mods depend on mods you don't have, one button looks them all
-  up on the Workshop and lists what it found, and one more installs them. Manifests only name a mod's
-  internal name, so the match is made by title; after each download ReHearth checks the mod really is
-  the one that was needed, and removes it again if it isn't. Anything it can't find gets a Search button.
+  up on the Workshop and lists what it found, and one more installs them. Manifests only give a mod's
+  internal name (`swamp_goblins`), which the Workshop doesn't know, so ReHearth checks, in order: a
+  shared index of names people have confirmed, the mods linked from the needing mod's own Workshop page,
+  and a Workshop search. After each download it checks the mod really is the one that was needed, and
+  removes it again if it isn't. Anything it can't find gets a Search button.
 - **Automatic fixes.** When you press PLAY, ReHearth switches on mods your other mods need, keeps the
   newest copy of a mod that's installed twice, switches off mods that can't be read, and pins every
   contested file to the copy you chose. It never deletes your files.
@@ -142,6 +144,14 @@ claude mcp add --scope user rehearth -- rehearth mcp
 Then ask things like "why did Stonehearth throw errors last session?" or "install whatever my mods are
 missing". The tools refuse to change anything while the game runs, and agents are told to install or
 launch only when you ask. Setup for other clients and the full tool list: [docs/agents.md](docs/agents.md).
+
+### The shared mod index
+
+[`data/namespaces.json`](data/namespaces.json) maps internal mod names to Workshop items. ReHearth ships
+with it and fetches the latest copy from this repository whenever it looks up missing mods, so a mod
+someone identifies once is found for everyone after that. To add yours, run
+`rehearth --export-namespaces` and open a pull request with the entries that are new; every pair in that
+output comes from a mod actually installed on your machine.
 
 ## How mod loading works
 
@@ -200,6 +210,7 @@ No. ReHearth is built for Linux, where Stonehearth runs through Proton.
 | `--report` | print what ReHearth sees: game folder, version, mods in load order, problems |
 | `--fix` | apply the automatic mod fixes without opening a window |
 | `--find-needed` | look up the missing mods your mods need, and show what would be installed |
+| `--export-namespaces` | print your installed Workshop mods as `name: id` pairs for the shared index |
 | `mcp` | run as an MCP server for coding agents (see [docs/agents.md](docs/agents.md)) |
 | `api [tool] [json]` | run one agent tool and print JSON; no tool lists them |
 | `--update` | update ReHearth to the latest release |

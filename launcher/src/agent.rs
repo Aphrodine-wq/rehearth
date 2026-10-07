@@ -278,13 +278,15 @@ pub fn call(name: &str, args: &Value) -> Result<Value> {
         "find_needed_mods" => {
             let s = snapshot()?;
             let missing: Vec<String> = s.analysis.missing.keys().cloned().collect();
-            let found = needed::find(&missing, &s.cfg.needed_known, &s.cfg.needed_wrong)?;
+            let found = needed::find(&missing, &s.cfg.needed_known, &s.cfg.needed_wrong, &needed::needers(&s.mods, &s.analysis))?;
             let installed = installed_ids(&s.paths);
             Ok(json!({
                 "needed": found.iter().map(|f| json!({
                     "namespace": f.namespace,
                     "needed_by": s.analysis.missing.get(&f.namespace).map(|v| v.iter().map(|&i| s.mods[i].namespace.clone()).collect::<Vec<_>>()),
                     "candidate": f.item.as_ref().map(|i| item_json(i, &installed)),
+                    "found_by": f.source,
+                    "certain": f.certain(),
                 })).collect::<Vec<_>>(),
             }))
         }
@@ -429,7 +431,7 @@ fn install_needed(args: &Value) -> Result<Value> {
     if wanted.is_empty() {
         return Ok(json!({ "results": [], "note": "No missing dependencies to install." }));
     }
-    let found = needed::find(&wanted, &s.cfg.needed_known, &s.cfg.needed_wrong)?;
+    let found = needed::find(&wanted, &s.cfg.needed_known, &s.cfg.needed_wrong, &needed::needers(&s.mods, &s.analysis))?;
     let mut installed = installed_ids(&s.paths);
     let mut results = Vec::new();
     for f in found {
@@ -462,7 +464,7 @@ fn install_needed(args: &Value) -> Result<Value> {
                 }
             }
         };
-        let mut row = json!({ "namespace": f.namespace, "workshop_id": item.id, "title": item.title, "also_installed": extras });
+        let mut row = json!({ "namespace": f.namespace, "workshop_id": item.id, "title": item.title, "found_by": f.source, "also_installed": extras });
         if let (Some(row), Some(o)) = (row.as_object_mut(), outcome.as_object()) {
             row.extend(o.clone());
         }

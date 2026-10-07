@@ -812,9 +812,10 @@ impl App {
                 namespaces.sort();
                 namespaces.dedup();
                 let (known, wrong) = (self.cfg.needed_known.clone(), self.cfg.needed_wrong.clone());
+                let needers = needed::needers(&self.mods, &self.analysis);
                 let n = namespaces.len();
                 self.spawn(&format!("Looking up {n} needed mod{} on the Workshop", if n == 1 { "" } else { "s" }), move || {
-                    Ok(TaskResult::Needed(needed::find(&namespaces, &known, &wrong)?))
+                    Ok(TaskResult::Needed(needed::find(&namespaces, &known, &wrong, &needers)?))
                 });
             }
             Action::InstallNeeded => {
@@ -1183,6 +1184,17 @@ fn main() -> eframe::Result {
         }
         return Ok(());
     }
+    if args.first().map(String::as_str) == Some("--export-namespaces") {
+        // `rehearth --export-namespaces`: your Workshop mods in data/namespaces.json's format,
+        // to contribute to the shared index
+        let cfg = Config::load();
+        let Some(paths) = game::locate(cfg.game_dir.as_deref()) else {
+            eprintln!("Stonehearth not found");
+            std::process::exit(1);
+        };
+        println!("{}", serde_json::to_string_pretty(&needed::export(&mods::scan(&paths))).unwrap_or_default());
+        return Ok(());
+    }
     if args.first().map(String::as_str) == Some("--find-needed") {
         // `rehearth --find-needed`: what "Install all needed mods" would pick
         let cfg = Config::load();
@@ -1201,12 +1213,12 @@ fn main() -> eframe::Result {
             println!("No needed mods are missing.");
             return Ok(());
         }
-        match needed::find(&missing, &cfg.needed_known, &cfg.needed_wrong) {
+        match needed::find(&missing, &cfg.needed_known, &cfg.needed_wrong, &needed::needers(&mods, &a)) {
             Ok(found) => {
                 for f in found {
                     match f.item {
-                        Some(i) => println!("  {:<20} → {} ({}, {} subs)", f.namespace, i.title, i.id, i.subscriptions),
-                        None => println!("  {:<20} → not found", f.namespace),
+                        Some(i) => println!("  {:<24} → {} ({}, {} subs) [{}]", f.namespace, i.title, i.id, i.subscriptions, f.source),
+                        None => println!("  {:<24} → not found", f.namespace),
                     }
                 }
             }

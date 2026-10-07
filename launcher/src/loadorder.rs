@@ -28,7 +28,9 @@ pub const LOAD_ORDER_NS: &str = "rehearth_load_order";
 const PATCH_NS: &str = "rehearth_patch";
 
 /// Manifest dependencies that are only load-order hints, never requirements.
-pub const SOFT_DEPENDENCIES: &[&str] = &["metaclass_override"];
+/// "debug_tools" is an old spelling of the built-in debug mod ("debugtools")
+/// that some mods still list; there's nothing to install for it.
+pub const SOFT_DEPENDENCIES: &[&str] = &["metaclass_override", "debug_tools"];
 
 /// Mods we know where to get, for "missing dependency" fixes.
 pub const KNOWN_WORKSHOP: &[(&str, u64, &str)] = &[("stonehearth_ace", 1577375188, "ACE")];

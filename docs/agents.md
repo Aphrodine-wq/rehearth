@@ -49,8 +49,11 @@ Errors come back as `{"error": "..."}` with exit code 1 (2 when the arguments ar
   its settings file when it exits.
 - Installs and removals go through the running Steam client and subscribe or unsubscribe the user's Steam
   account. Agents should only do them when the user asked.
-- `install_needed_mods` matches missing dependencies to Workshop items by title, then checks each download
-  is really the mod that was needed and removes it again if it isn't.
+- `find_needed_mods` says how each candidate was found (`found_by`: `confirmed`, `index`, `linked from
+  <mod>'s page` or `search`) and whether it's `certain`. Index and confirmed matches are known; the others
+  are title matches.
+- `install_needed_mods` checks each download is really the mod that was needed and removes it again if it
+  isn't.
 - `launch_game` starts the game. Agents shouldn't call it unless the user asked to play or test.
 
 ## Tools

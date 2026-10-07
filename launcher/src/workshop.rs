@@ -204,6 +204,27 @@ pub fn details(ids: &[u64]) -> Result<Vec<(Item, String)>> {
         .collect())
 }
 
+/// Workshop items an item's page points at: its "Required items" and the
+/// links in its description. Blocking.
+pub fn linked_items(id: u64) -> Result<Vec<u64>> {
+    let url = format!("https://steamcommunity.com/sharedfiles/filedetails/?id={id}");
+    let html = agent().get(&url).call().context("couldn't reach the Steam Workshop")?.body_mut().read_to_string()?;
+    // only the required-items box and the description, not "more from this author"
+    let start = ["requiredItemsContainer", "id=\"highlightContent\""].iter().filter_map(|m| html.find(m)).min();
+    let Some(start) = start else { return Ok(Vec::new()) };
+    let end = html[start..].find("InitializeCommentThread").map(|e| start + e).unwrap_or(html.len());
+    let mut ids = Vec::new();
+    for part in html[start..end].split("filedetails/?id=").skip(1) {
+        let digits: String = part.chars().take_while(char::is_ascii_digit).collect();
+        if let Ok(found) = digits.parse::<u64>() {
+            if found != id && !ids.contains(&found) {
+                ids.push(found);
+            }
+        }
+    }
+    Ok(ids)
+}
+
 fn cache_dir() -> PathBuf {
     let base = std::env::var_os("XDG_CACHE_HOME")
         .map(PathBuf::from)

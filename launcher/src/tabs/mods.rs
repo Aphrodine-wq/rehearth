@@ -157,7 +157,7 @@ impl App {
         let Some(rows) = &mut self.needed else { return };
         card(ui, |ui| {
             card_title(ui, "Needed mods");
-            ui.label(RichText::new("Found on the Workshop by name. After each download ReHearth checks it's the right mod, and removes it again if it isn't.").color(DIM).small());
+            ui.label(RichText::new("After each download ReHearth checks it's the right mod, and removes it again if it isn't.").color(DIM).small());
             ui.add_space(4.0);
             for (row, for_whom) in rows.iter_mut().zip(&labels) {
                 let ns = row.found.namespace.clone();
@@ -166,7 +166,8 @@ impl App {
                         ui.checkbox(&mut row.install, "");
                         ui.vertical(|ui| {
                             ui.label(RichText::new(&item.title).font(FontId::new(15.5, art::medium_family())));
-                            let mut info = format!("{ns} · for {for_whom}");
+                            let how = if row.found.certain() { "known match".to_string() } else { format!("best guess, {}", row.found.source) };
+                            let mut info = format!("{ns} · for {for_whom} · {how}");
                             if item.subscriptions > 0 {
                                 info.push_str(&format!(" · {} subscribers", crate::workshop::human_count(item.subscriptions)));
                             }
